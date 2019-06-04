@@ -17,13 +17,13 @@ It's a standalone, stdlib-only python script that works on 3.6+ but can probably
 Let's say `$HOME` looks like this:
 
 	.
-    ├── workspace
+    ├── somewhere
     │ └── ...
     └── .config
        └── foo
           └── bar.conf
 
-And you're in `${HOME}/workspace/somewhere/dotfiles`:
+And you're in `${HOME}/somewhere/else/dotfiles`:
 
     .
     ├── bash
@@ -33,7 +33,7 @@ And you're in `${HOME}/workspace/somewhere/dotfiles`:
           └── mpv
              └── mpv.conf
 
-To symlink your `bash` and `mpv` configuration files ("source" directories) to `$HOME` (the "target" directory's default value - it can be specified with `-t`), you would invoke:
+To symlink your `bash` and `mpv` configuration files ("source" directories) to `$HOME` (the "target" directory's default value - it can be specified with `-t`), simply invoke:
 
 	$ sym bash mpv
 
@@ -42,12 +42,12 @@ The resulting `$HOME`:
     .
     ├── somewhere
        └── ...
-    ├── .bashrc -> workspace/somewhere/dotfiles/bash/.bashrc
+    ├── .bashrc -> somewhere/else/dotfiles/bash/.bashrc
     └── .config
        └── foo
           └── bar.conf
        └── mpv
-          └── mpv.conf -> workspace/somewhere/dotfiles/mpv/.config/mpv/mpv.conf
+          └── mpv.conf -> somewhere/else/dotfiles/mpv/.config/mpv/mpv.conf
 
 To remove symlinks, pass the `-d` (delete) flag: `sym -d bash mpv`.
 
