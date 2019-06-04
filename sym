@@ -1,0 +1,143 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import argparse
+from fnmatch import fnmatch
+
+# these globs are case-insensitively matched against the basename
+DEFAULT_GLOB_BLACKLIST = (
+    ".git",
+    ".gitignore",
+    "README*",
+    "LICENSE*",
+)
+
+def walk(start):
+    with os.scandir(start) as it:
+        for entry in it:
+            if any(
+                fnmatch(os.path.basename(entry.path), glob)
+                for glob in DEFAULT_GLOB_BLACKLIST
+            ):
+                continue
+            if entry.is_dir():
+                yield from walk(entry.path)
+            elif entry.is_file(follow_symlinks=False):
+                yield entry.path
+
+def slp(s, p):
+    # strip leading prefix
+    if s.startswith(p):
+        return s[len(p):]
+    return s
+
+def relative(o, r):
+    # given 2 absolute file paths "origin" and "reference", calculate relative path to origin from reference e.g.
+    # /home/josh/dotfiles/bash/.bashrc
+    # /home/cool/.bashrc -> ../../josh/dotfiles/bash/.bashrc
+    i, lim = 0, min(len(o), len(r))
+    while i < lim:
+        if o[i] != r[i]:
+            break
+        i += 1
+    return '../' * r[i:].count('/') + o[i:]
+
+def log(msg, v):
+    if not v:
+        return
+    print(msg)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('source', type=str, nargs='+', help='source directories; where configuration files reside')
+    parser.add_argument('-t', metavar='TARGET', type=str, help='target directory; where symlinks shall be created (default: $HOME)', default=os.path.expanduser('~'))
+    parser.add_argument('-d', action='store_true', help='remove symlinks instead of create')
+    parser.add_argument('-p', action='store_true', help='pretend; implies -v but does not perform any actual operations.')
+    parser.add_argument('-v', action='store_true', help='print symlinks as they are created or removed')
+    args = parser.parse_args()
+
+    sources_abs = []
+    for path in args.source:
+        if not os.path.isdir(path):
+            sys.exit(f"source directory {path} is not a directory or does not exist")
+        sources_abs.append(os.path.abspath(path))
+
+    if not os.path.isdir(args.t):
+        sys.exit(f"target directory {args.t} is not a directory or does not exist")
+    target_abs = os.path.abspath(args.t)
+
+    # pass #1: collect symlink jobs from all sources and detect conflicts
+    # TODO: should symlinks be a set to prevent duplicates?
+    symlinks, conflicts = [], []
+    for source_abs in sources_abs:
+        for filepath in walk(source_abs):
+            sym_dest_abs = filepath  # absolute path to configuration file; symlink destination
+            # TODO: in golang implementation, block comment w/ examples
+            sym_src_abs = os.path.join(  # absolute path to new symlink to be created that points to the configuration file
+                target_abs,
+                slp(sym_dest_abs, source_abs).lstrip('/'),
+            )
+            if not args.d:
+                # if the symlink we are trying to create exists...
+                if os.path.exists(sym_src_abs):
+                    # ...but is a symlink to the valid file we are trying to symlink, ignore it.
+                    if os.path.islink(sym_src_abs):
+                        rel = os.readlink(sym_src_abs)
+                        # convert relative path pointed to by symlink to absolute, wow that is nasty
+                        if os.path.realpath(os.path.join(os.path.dirname(sym_src_abs), rel)) == sym_dest_abs:
+                            continue
+                    conflicts.append(f'{sym_src_abs} already exists. sym cannot create symlinks if there is an existing file.')
+                    continue
+            else:
+                if not os.path.exists(sym_src_abs):
+                    continue
+                if not os.path.islink(sym_src_abs):
+                    conflicts.append(f'{sym_src_abs} is not a symlink, so refusing to remove.')
+                    continue
+                if os.readlink(sym_src_abs)[0] == '/':
+                    conflicts.append(f'{sym_src_abs} is an absolute symlink. sym only creates relative symlinks, so refusing to remove.')
+                    continue
+                if os.path.realpath(sym_src_abs) != sym_dest_abs:
+                    conflicts.append(f'{sym_src_abs} is a relative symlink, but does not resolve to the expected {sym_dest_abs}, so refusing to remove.')
+                    continue
+            symlinks.append((sym_src_abs, sym_dest_abs))
+
+    # if any conflicts, report them and exit
+    for c in conflicts:
+        print('CONFLICT:', c, file=sys.stderr)
+    if conflicts and not args.p:
+        sys.exit('sym will not start until all conflicts are resolved.')
+
+    verbose = args.v or args.p
+    if args.p:
+        # XXX: this doesn't include RMDIR because that depends on actual filesystem operations at the moment
+        #      and pretend-specific code to autodetect those operations isn't worth the added complexity right now
+        print('Pretend mode is on; the following operations are what would have been executed.')
+
+    # pass #2: perform operations
+    if not args.d:
+        for src, dest in symlinks:
+            # we want to create new symlink at src pointing to dest
+            # first, make necessary directories if src's dir doesn't exist
+            src_dir = os.path.dirname(src)
+            if not os.path.isdir(src_dir):
+                if not args.p:
+                    os.makedirs(src_dir, exist_ok=True)
+                log(f'MKDIRS: {src_dir}', verbose)
+            dest = relative(dest, src)  # convert destination to relative symlink
+            if not args.p:
+                os.symlink(dest, src)  # creates a symlink named src which points to dest. python docs think other way around.
+            log(f'LINK: {src} -> {dest}', verbose)
+    else:
+        for src, _ in symlinks:
+            src_dir = os.path.dirname(src)
+            if not args.p:
+                os.unlink(src)
+            log(f'UNLINK: {src}', verbose)
+            while not os.listdir(src_dir):
+                if not args.p:
+                    os.rmdir(src_dir)
+                log(f'RMDIR: {src_dir}', verbose)
+                src_dir = os.path.dirname(src_dir)  # this is safe because this is a calculation; not dependent on filesystem state
