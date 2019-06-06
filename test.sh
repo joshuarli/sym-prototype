@@ -107,7 +107,7 @@ ln -s ../dotfiles/bash/.bashrc .
 cd ..
 # end setup
 $sym -t home -v -d dotfiles/mpv &> log
-expected="UNLINK: /home/.config/mpv/mpv.conf
+expected="UNLINK: home/.config/mpv/mpv.conf
 RMDIR: home/.config/mpv
 RMDIR: home/.config"
 echo "  assertion 1: expected output"; diff log <(echo "$expected") || nfailed=$((nfailed + 1))
@@ -115,16 +115,16 @@ echo "  assertion 2: expected result"; diff -r --no-dereference home expected-ho
 rm -r home; mkdir home
 rm -r expected-home; mkdir expected-home
 
-echo -e "\n9: try to unlink bash, but conflict; bash is not owned by sym (dead symlink)"
+echo -e "\n9: try to unlink bash, but conflict; bash is not owned by sym (relative symlink)"
+touch foo
 cd home
-tmpfile="$(mktemp)"
-ln -sf "$tmpfile" .bashrc
+ln -s ../foo .bashrc
 cd ../expected-home
-ln -sf "$tmpfile" .bashrc
+ln -s ../foo .bashrc
 cd ..
 # end setup
 $sym -t home -v -d dotfiles/* &> log || true
-expected="CONFLICT: home/.bashrc is an absolute symlink. sym only creates relative symlinks, so refusing to remove.
+expected="CONFLICT: home/.bashrc is a relative symlink, but resolves to ${tmp}/foo instead of the expected ${tmp}/dotfiles/bash/.bashrc, so refusing to remove.
 sym will not start until all conflicts are resolved."
 echo "  assertion 1: expected output"; diff log <(echo "$expected") || nfailed=$((nfailed + 1))
 echo "  assertion 2: expected result"; diff -r --no-dereference home expected-home || nfailed=$((nfailed + 1))

@@ -71,12 +71,12 @@ if __name__ == '__main__':
             name = path.join(target_dir, filepath.lstrip(source_dir))
             # the symlink dest is filepath, relative to the name's directory.
             # conversion to absolute paths is necessary for relpath to work here.
-            dest = path.relpath(path.abspath(filepath), path.dirname(path.abspath(name)))
+            dest_abspath = path.abspath(filepath)
+            dest = path.relpath(dest_abspath, path.dirname(path.abspath(name)))
 
             exists = path.exists(name)
             islink = path.islink(name)
             realpath = path.realpath(name)
-            dest_abspath = path.abspath(dest)
 
             if not args.delete:
                 # if the symlink we are trying to create exists...
@@ -99,7 +99,6 @@ if __name__ == '__main__':
                     conflicts.append(f'{name} is an absolute symlink. sym only creates relative symlinks, so refusing to remove.')
                     continue
                 if realpath != dest_abspath:
-                    # XXX: this is buggy, see test output
                     conflicts.append(f'{name} is a relative symlink, but resolves to {realpath} instead of the expected {dest_abspath}, so refusing to remove.')
                     continue
             symlinks.append((name, dest))
