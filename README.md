@@ -71,6 +71,8 @@ Remove mode:
 
 TODO
 
+By default, `sym` ignores some filepaths with a built-in filename glob blacklist. In the future, repeatable `--exclude` (glob or regex, not decided yet) and `--include` will be implemented.
+
 
 ## Appendix
 

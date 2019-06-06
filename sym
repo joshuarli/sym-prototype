@@ -8,7 +8,7 @@ from fnmatch import fnmatch
 
 # these globs are case-insensitively matched against the filename
 # TODO: tests for verbose output (ignored reports)
-# TODO: support repeatable --ignore filename (or filepath?) regexes
+# TODO: support repeatable --exclude and --include filename (or filepath?) regexes
 DEFAULT_GLOB_BLACKLIST = (
     ".git",
     ".gitignore",
