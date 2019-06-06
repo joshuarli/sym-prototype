@@ -48,6 +48,8 @@ if __name__ == '__main__':
     for source_dir in args.source:
         if not path.isdir(source_dir):
             sys.exit(f"source directory {source_dir} is not a directory or does not exist")
+        if not source_dir.endswith('/'):
+            source_dir += '/'
         source_dirs.append(source_dir)
 
     if not path.isdir(args.target):
