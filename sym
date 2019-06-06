@@ -6,7 +6,8 @@ import sys
 import argparse
 from fnmatch import fnmatch
 
-# these globs are case-insensitively matched against the basename
+# these globs are case-insensitively matched against the filename
+# TODO: tests for verbose output (ignored reports)
 # TODO: support repeatable --ignore filename (or filepath?) regexes
 DEFAULT_GLOB_BLACKLIST = (
     ".git",
@@ -15,24 +16,24 @@ DEFAULT_GLOB_BLACKLIST = (
     "LICENSE*",
 )
 
-def walk(start):
+def log(msg, v):
+    if not v:
+        return
+    print(msg)
+
+def walk(start, verbose=False):
     with os.scandir(start) as it:
         for entry in it:
             if any(
                 fnmatch(path.basename(entry.path), glob)
                 for glob in DEFAULT_GLOB_BLACKLIST
             ):
+                log(f"IGNORE: {entry.path}", verbose)
                 continue
             if entry.is_dir():
-                yield from walk(entry.path)
+                yield from walk(entry.path, verbose)
             elif entry.is_file(follow_symlinks=False):
                 yield entry.path
-
-
-def log(msg, v):
-    if not v:
-        return
-    print(msg)
 
 
 if __name__ == '__main__':
@@ -56,11 +57,13 @@ if __name__ == '__main__':
         sys.exit(f"target directory {args.target} is not a directory or does not exist")
     target_dir = args.target
 
+    verbose = args.verbose or args.pretend
+
     # pass #1: collect symlink jobs from all sources and detect conflicts
     # TODO: should symlinks be a set to prevent duplicates?
     symlinks, conflicts = [], []
     for source_dir in source_dirs:
-        for filepath in walk(source_dir):
+        for filepath in walk(source_dir, verbose):
             '''
             say we're given dotfiles/mpv as a source directory, and it contains .config/mpv/mpv.conf
             say we have a target dir of ~, and dotfiles/mpv full path is ~/somewhere/dotfiles/mpv
@@ -111,7 +114,6 @@ if __name__ == '__main__':
     if conflicts and not args.pretend:
         sys.exit('sym will not start until all conflicts are resolved.')
 
-    verbose = args.verbose or args.pretend
     if args.pretend:
         # XXX: this doesn't include RMDIR because that depends on actual filesystem operations at the moment
         #      and pretend-specific code to autodetect those operations isn't worth the added complexity right now
