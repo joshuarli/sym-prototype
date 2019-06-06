@@ -65,38 +65,42 @@ if __name__ == '__main__':
             (the $PWD is ~/somewhere)
             we want to create the relative symlink at (the name/path) ~/.config/mpv/mpv.conf,
             pointing to ../../../somewhere/dotfiles/.config/mpv/mpv.conf
-
-            the symlink name is target dir + filepath without the parent source_dir
-            the symlink dest is filepath, relative to the name's directory.
-                conversion to absolute paths is necessary for relpath to work here.
             '''
+            # the symlink name is target dir + filepath without the parent source_dir
+            # XXX: lstrip not ideal, but i don't intend on supporting non-UNIX style paths anyways
             name = path.join(target_dir, filepath.lstrip(source_dir))
+            # the symlink dest is filepath, relative to the name's directory.
+            # conversion to absolute paths is necessary for relpath to work here.
             dest = path.relpath(path.abspath(filepath), path.dirname(path.abspath(name)))
+
+            exists = path.exists(name)
+            islink = path.islink(name)
+            realpath = path.realpath(name)
+            dest_abspath = path.abspath(dest)
 
             if not args.delete:
                 # if the symlink we are trying to create exists...
-                if path.exists(name):
+                if exists:
                     # ...but is a symlink to the valid file we are trying to symlink, ignore it.
-                    if path.islink(name):
-                        if os.readlink(name) == dest:
-                            continue
+                    if islink and (realpath == dest_abspath):
+                        continue
                     # otherwise, conflict.
                     conflicts.append(f'{name} already exists. sym cannot create symlinks if there is an existing file.')
                     continue
             else:
                 # if the symlink doesn't exist, we obviously don't need to try and delete it.
-                if not path.exists(name):
+                if not exists:
                     continue
                 # but if it does, there is potential for conflicts (deleting something we shouldn't be deleting)
-                if not path.islink(name):
+                if not islink:
                     conflicts.append(f'{name} is not a symlink, so refusing to remove.')
                     continue
                 if os.readlink(name)[0] == '/':
                     conflicts.append(f'{name} is an absolute symlink. sym only creates relative symlinks, so refusing to remove.')
                     continue
-                if path.realpath(name) != path.abspath(dest):
+                if realpath != dest_abspath:
                     # XXX: this is buggy, see test output
-                    conflicts.append(f'{name} is a relative symlink, but resolves to {path.realpath(name)} instead of the expected {path.abspath(dest)}, so refusing to remove.')
+                    conflicts.append(f'{name} is a relative symlink, but resolves to {realpath} instead of the expected {dest_abspath}, so refusing to remove.')
                     continue
             symlinks.append((name, dest))
 
