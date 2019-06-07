@@ -140,6 +140,20 @@ expected="CONFLICT: sym is trying to create more than one home/.bashrc, refusing
 sym will not start until all conflicts are resolved."
 echo "  assertion 1: expected output"; diff log <(echo "$expected") || nfailed=$((nfailed + 1))
 echo "  assertion 2: expected result"; diff -r --no-dereference home expected-home || nfailed=$((nfailed + 1))
+rm -r dotfiles/bash_dupe
+rm -r home; mkdir home
+rm -r expected-home; mkdir expected-home
+
+echo -e "\n11: try to unlink all, but conflict with mpv; a non-symlink file already exists there"
+mkdir -p home/.config/mpv expected-home/.config/mpv
+echo foobar > home/.config/mpv/mpv.conf
+echo foobar > expected-home/.config/mpv/mpv.conf
+# end setup
+$sym -t home -v dotfiles/* &> log || true
+expected="CONFLICT: home/.config/mpv/mpv.conf already exists. sym cannot create symlinks if there is an existing file.
+sym will not start until all conflicts are resolved."
+echo "  assertion 1: expected output"; diff log <(echo "$expected") || nfailed=$((nfailed + 1))
+echo "  assertion 2: expected result"; diff -r --no-dereference home expected-home || nfailed=$((nfailed + 1))
 rm -r home; mkdir home
 rm -r expected-home; mkdir expected-home
 
