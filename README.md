@@ -57,19 +57,11 @@ To remove symlinks, pass the `-d` (delete) flag: `sym -d bash mpv`.
 `sym` will:
 
 - always create relative symlinks
-	- will never create nor remove absolute symlinks
+- only remove symlinks it is expected to remove (refer to the conflict detection code)
 - create directories to accomodate new symlinks as needed
-- remove empty directories that are created as a result of symlink removal (GNU Stow does not do this)
+- remove empty directories resulting from symlink removal (GNU Stow does not do this)
 
 Like GNU Stow, `sym` performs two passes. The first pass collects symlink jobs, and if any conflicts are detected during this process, they will all be printed and `sym` will exit. The second pass executes all the symlink jobs, symlinking or removing depending on whether or not `-d` was passed.
-
-A conflict occurs under the following conditions:
-
-Symlink mode:
-
-Remove mode:
-
-TODO
 
 By default, `sym` ignores some filepaths with a built-in filename glob blacklist. In the future, repeatable `--exclude` (glob or regex, not decided yet) and `--include` will be implemented.
 
@@ -77,6 +69,10 @@ By default, `sym` ignores some filepaths with a built-in filename glob blacklist
 ## Appendix
 
 There are several pain points when using GNU Stow to install/uninstall dotfiles.
+
+TODO: condense/rewrite this.
+TODO: GNU Stow cannot use a stow directory that is a symbolic link, and we should support this. https://github.com/aspiers/stow/issues/11
+    For example on gentoo linux, /usr/src/linux -> /usr/src/linux-4.19-gentoo-blah and we would like to symlink a .config and other things.
 
 Ideally, you want to be able to say `stow bash` and have your bash configuration files installed to `$HOME`. The only way to achieve this is to have your dotfiles in `~/somedir` and your files in `~/somedir/bash` e.g. `~/somedir/bash/.bashrc` and your pwd at `~/somedir` when you invoke `stow bash`. Only then you will get `~/.bashrc -> somedir/bash/.bashrc`. The target directory defaults to `${PWD}/..` (if `STOW_DIR` is not set, which usually isn't/wouldn't be by an end user), which is `$HOME` in this specific scenario.
 
