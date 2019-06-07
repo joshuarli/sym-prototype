@@ -72,8 +72,9 @@ if __name__ == '__main__':
             pointing to ../../../somewhere/dotfiles/.config/mpv/mpv.conf
             '''
             # the symlink name is target dir + filepath without the parent source_dir
-            # XXX: lstrip not ideal, but i don't intend on supporting non-UNIX style paths anyways
-            name = path.join(target_dir, filepath.lstrip(source_dir))
+            # it is guaranteed that the filepath has source_dir at the beginning,
+            # so removing that # chars from the beginning should be correct.
+            name = path.join(target_dir, filepath[len(source_dir):])
             # the symlink dest is filepath, relative to the name's directory.
             # conversion to absolute paths is necessary for relpath to work here.
             dest_abspath = path.abspath(filepath)
