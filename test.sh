@@ -131,5 +131,17 @@ echo "  assertion 2: expected result"; diff -r --no-dereference home expected-ho
 rm -r home; mkdir home
 rm -r expected-home; mkdir expected-home
 
+echo -e "\n10: refuse duplicate symlink creation"
+mkdir dotfiles/bash_dupe
+touch dotfiles/bash_dupe/.bashrc
+# end setup
+$sym -t home -v dotfiles/bash dotfiles/bash_dupe &> log || true
+expected="CONFLICT: sym is trying to create more than one home/.bashrc, refusing to create duplicate symlinks.
+sym will not start until all conflicts are resolved."
+echo "  assertion 1: expected output"; diff log <(echo "$expected") || nfailed=$((nfailed + 1))
+echo "  assertion 2: expected result"; diff -r --no-dereference home expected-home || nfailed=$((nfailed + 1))
+rm -r home; mkdir home
+rm -r expected-home; mkdir expected-home
+
 echo -e '\ntesting finished.'
 (( "$nfailed" > 0 )) && die "failed ${nfailed} assertions"
