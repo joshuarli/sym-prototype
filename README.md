@@ -1,10 +1,18 @@
 # sym-prototype
 
-sym is a straightforward batch symlinker developed to easily install and uninstall user configuration files / dotfiles.
+sym is a straightforward batch symlinker.
 
-It implements a feature subset of GNU Stow, but is similar in spirit. In fact, GNU Stow entirely satisfies my own needs, notwithstanding [several pain points](#Appendix) with regards to the use case in question, which it was not specifically designed to fulfill.
+It implements the feature subset most GNU Stow users use to (un,)install their dotfiles. Improvements include a cleaned-up command line, sane defaults, and multiple args. So instead of something like...
 
-This is the python prototype and reference implementation for a possible golang implementation in the future.
+	$ stow --no-folding -t $HOME -d shells bash
+	$ stow --no-folding -t $HOME -d dev-langs python
+	$ stow --no-folding -t $HOME -d dev-tools tmux
+
+...you can do the equivalent
+
+	$ sym shells/bash dev-langs/python dev-tools/tmux
+
+This is the python prototype and reference implementation for a possible golang (or similar) implementation in the future.
 
 
 ## Installation
