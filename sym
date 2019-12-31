@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import os.path as path  # for better readability
+import os.path as path
 import sys
 import argparse
 from fnmatch import fnmatch
@@ -16,10 +16,12 @@ DEFAULT_GLOB_BLACKLIST = (
     "LICENSE*",
 )
 
+
 def log(msg, v):
     if not v:
         return
     print(msg)
+
 
 def walk(start, verbose=False):
     with os.scandir(start) as it:
@@ -36,21 +38,47 @@ def walk(start, verbose=False):
                 yield entry.path
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('source', type=str, nargs='+', help='source directory containing files to be symlinked')
-    parser.add_argument('-t', '--target', metavar='TARGET', type=str, help='target directory to create symlinks in (default: $HOME)', default=path.expanduser('~'))
-    parser.add_argument('-d', '--delete', action='store_true', help='remove symlinks instead of create')
-    parser.add_argument('-p', '--pretend', action='store_true', help='pretend; implies -v but does not perform any actual operations.')
-    parser.add_argument('-v', '--verbose', action='store_true', help='print symlinks as they are created or removed')
+    parser.add_argument(
+        "source",
+        type=str,
+        nargs="+",
+        help="source directory containing files to be symlinked",
+    )
+    parser.add_argument(
+        "-t",
+        "--target",
+        metavar="TARGET",
+        type=str,
+        help="target directory to create symlinks in (default: $HOME)",
+        default=path.expanduser("~"),
+    )
+    parser.add_argument(
+        "-d", "--delete", action="store_true", help="remove symlinks instead of create"
+    )
+    parser.add_argument(
+        "-p",
+        "--pretend",
+        action="store_true",
+        help="pretend; implies -v but does not perform any actual operations.",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="print symlinks as they are created or removed",
+    )
     args = parser.parse_args()
 
     source_dirs = []
     for source_dir in args.source:
         if not path.isdir(source_dir):
-            sys.exit(f"source directory {source_dir} is not a directory or does not exist")
-        if not source_dir.endswith('/'):
-            source_dir += '/'
+            sys.exit(
+                f"source directory {source_dir} is not a directory or does not exist"
+            )
+        if not source_dir.endswith("/"):
+            source_dir += "/"
         source_dirs.append(source_dir)
 
     if not path.isdir(args.target):
@@ -74,9 +102,11 @@ if __name__ == '__main__':
             # the symlink name is target dir + filepath without the parent source_dir
             # it is guaranteed that the filepath has source_dir at the beginning,
             # so removing that # chars from the beginning should be correct.
-            name = path.join(target_dir, filepath[len(source_dir):])
+            name = path.join(target_dir, filepath[len(source_dir) :])
             if name in symlink_names:
-                conflicts.append(f'sym is trying to create more than one {name}, refusing to create duplicate symlinks.')
+                conflicts.append(
+                    f"sym is trying to create more than one {name}, refusing to create duplicate symlinks."
+                )
                 continue
 
             # the symlink dest is filepath, relative to the name's directory.
@@ -95,7 +125,9 @@ if __name__ == '__main__':
                     if islink and (realpath == dest_abspath):
                         continue
                     # otherwise, conflict.
-                    conflicts.append(f'{name} already exists. sym cannot create symlinks if there is an existing file.')
+                    conflicts.append(
+                        f"{name} already exists. sym cannot create symlinks if there is an existing file."
+                    )
                     continue
             else:
                 # if the symlink doesn't exist, we obviously don't need to try and delete it.
@@ -103,13 +135,17 @@ if __name__ == '__main__':
                     continue
                 # but if it does, there is potential for conflicts (deleting something we shouldn't be deleting)
                 if not islink:
-                    conflicts.append(f'{name} is not a symlink, so refusing to remove.')
+                    conflicts.append(f"{name} is not a symlink, so refusing to remove.")
                     continue
-                if os.readlink(name)[0] == '/':
-                    conflicts.append(f'{name} is an absolute symlink. sym only creates relative symlinks, so refusing to remove.')
+                if os.readlink(name)[0] == "/":
+                    conflicts.append(
+                        f"{name} is an absolute symlink. sym only creates relative symlinks, so refusing to remove."
+                    )
                     continue
                 if realpath != dest_abspath:
-                    conflicts.append(f'{name} is a relative symlink, but resolves to {realpath} instead of the expected {dest_abspath}, so refusing to remove.')
+                    conflicts.append(
+                        f"{name} is a relative symlink, but resolves to {realpath} instead of the expected {dest_abspath}, so refusing to remove."
+                    )
                     continue
 
             symlink_names.append(name)
@@ -117,14 +153,16 @@ if __name__ == '__main__':
 
     # if any conflicts, report them and exit
     for c in conflicts:
-        print('CONFLICT:', c, file=sys.stderr)
+        print("CONFLICT:", c, file=sys.stderr)
     if conflicts and not pretend:
-        sys.exit('sym will not start until all conflicts are resolved.')
+        sys.exit("sym will not start until all conflicts are resolved.")
 
     if pretend:
         # XXX: this doesn't include RMDIR because that depends on actual filesystem operations at the moment
         #      and pretend-specific code to autodetect those operations isn't worth the added complexity right now
-        print('Pretend mode is on; the following operations are what would have been executed.')
+        print(
+            "Pretend mode is on; the following operations are what would have been executed."
+        )
 
     # pass #2: perform operations
     if not delete_mode:
@@ -134,21 +172,22 @@ if __name__ == '__main__':
             if not path.isdir(name_dir):
                 if not pretend:
                     os.makedirs(name_dir, exist_ok=True)
-                log(f'MKDIRS: {name_dir}', verbose)
+                log(f"MKDIRS: {name_dir}", verbose)
             # create the symlink
             if not pretend:
                 os.symlink(dest, name)
-            log(f'LINK: {name} -> {dest}', verbose)
+            log(f"LINK: {name} -> {dest}", verbose)
     else:
         for name in symlink_names:
             # remove the symlink
             if not pretend:
                 os.unlink(name)
-            log(f'UNLINK: {name}', verbose)
+            log(f"UNLINK: {name}", verbose)
             # cleanup as many empty parent dirs as possible
             name_dir = path.dirname(name)
             while not os.listdir(name_dir):
                 if not pretend:
                     os.rmdir(name_dir)
-                log(f'RMDIR: {name_dir}', verbose)
-                name_dir = path.dirname(name_dir)  # this is safe because this is a calculation; not dependent on filesystem state
+                log(f"RMDIR: {name_dir}", verbose)
+                # this is safe because this is a calculation; not dependent on filesystem state
+                name_dir = path.dirname(name_dir)
